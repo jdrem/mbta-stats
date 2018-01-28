@@ -2,9 +2,11 @@ package net.remgant.mbta;
 
 import org.jfree.chart.ChartFactory;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.axis.DateAxis;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.time.Minute;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
@@ -12,6 +14,7 @@ import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 import javax.imageio.ImageIO;
 import javax.sql.DataSource;
+import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -27,20 +30,34 @@ import java.util.Map;
  */
 public class ChartMaker {
     public static void main(String args[]) throws IOException {
-        new ChartMaker().run();
+        new ChartMaker().run("2018-01-25", 419);
     }
 
-    public void run() throws IOException {
-        String chartName = "Trip 400";
+    public void run(String dateString, int tripId) throws IOException {
+        LocalDate localDate = LocalDate.parse(dateString);
+        String chartName = String.format("Trip %03d (%s)", tripId, dateString);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        String outFileName = "400.png";
+        String outFileName = String.format("trip-%s-%03d.png", dateString, tripId);
         String dbUrl = System.getProperty("db.url");
         String dbUser = System.getProperty("db.user");
         String dbPwd = System.getProperty("db.pwd");
         DataSource dataSource = new SingleConnectionDataSource(dbUrl, dbUser, dbPwd, false);
         OnTimeDAOImpl fixture = new OnTimeDAOImpl(dataSource);
-        Map<String, Object> data = fixture.findDataForTrip(LocalDate.of(2018, 1, 25), "CR-Weekday-Fall-17-400");
+        Map<String, Object> data = fixture.findDataForTrip(localDate, String.format("CR-Weekday-Fall-17-%03d", tripId));
         List<Map<String, Object>> list = (List<Map<String, Object>>) data.get("stops");
+
+
+        JFreeChart chart = ChartFactory.createTimeSeriesChart(
+                chartName,                  // title
+                "Time",                     // x-axis label
+                "Delay",                    // y-axis label
+                dataset,                    // data
+                true,                       // create legend?
+                false,                      // generate tooltips?
+                false                       // generate URLs?
+        );
+        XYPlot plot = (XYPlot) chart.getPlot();
+
 
         TimeSeries timeSeries = new TimeSeries("Delay");
         for (Map<String, Object> o : list) {
@@ -62,22 +79,40 @@ public class ChartMaker {
 
         timeSeries = new TimeSeries("Stops");
         for (Map.Entry<LocalTime, String> e : stopTimes.entrySet()) {
-            ZonedDateTime zdt = ZonedDateTime.of(LocalDate.now(), e.getKey(), ZoneId.of("America/New_York"));
+            ZonedDateTime zdt = ZonedDateTime.of(localDate, e.getKey(), ZoneId.of("America/New_York"));
             Minute minute = new Minute(zdt.getMinute(), zdt.getHour(), zdt.getDayOfMonth(), zdt.getMonthValue(), zdt.getYear());
-            timeSeries.add(minute, 0);
+            timeSeries.add(minute, -5);
+            XYTextAnnotation annotation = new XYTextAnnotation(e.getValue(), minute.getFirstMillisecond(), -5);
+            annotation.setFont(new Font("SansSerif", Font.PLAIN, 9));
+            annotation.setPaint(Color.black);
+            annotation.setRotationAnchor(TextAnchor.BOTTOM_LEFT);
+            annotation.setTextAnchor(TextAnchor.BOTTOM_LEFT);
+            annotation.setRotationAngle(Math.PI / 2.0);
+            plot.addAnnotation(annotation);
+
         }
         dataset.addSeries(timeSeries);
 
-        JFreeChart chart = ChartFactory.createTimeSeriesChart(
-                chartName,                  // title
-                "Time",                     // x-axis label
-                "Delay",                    // y-axis label
-                dataset,                    // data
-                true,                       // create legend?
-                false,                      // generate tooltips?
-                false                       // generate URLs?
-        );
-        XYPlot plot = (XYPlot) chart.getPlot();
+        Map<String, ZonedDateTime> actualStops = new HashMap<>();
+        list.stream().forEach(m -> {
+            String stop = m.get("nextStop").toString();
+            ZonedDateTime zdt = Instant.parse(m.get("timestamp").toString()).atZone(ZoneId.of("America/New_York"));
+            actualStops.put(stop, zdt);
+        });
+
+        timeSeries = new TimeSeries("Actual");
+        for (Map.Entry<String, ZonedDateTime> e : actualStops.entrySet()) {
+            Minute minute = new Minute(e.getValue().getMinute(), e.getValue().getHour(), e.getValue().getDayOfMonth(), e.getValue().getMonthValue(), e.getValue().getYear());
+            timeSeries.add(minute, 5);
+            XYTextAnnotation annotation = new XYTextAnnotation(e.getKey(), minute.getFirstMillisecond(), 5);
+            annotation.setFont(new Font("SansSerif", Font.PLAIN, 9));
+            annotation.setPaint(Color.black);
+            annotation.setRotationAnchor(TextAnchor.BOTTOM_RIGHT);
+            annotation.setTextAnchor(TextAnchor.BOTTOM_RIGHT);
+            annotation.setRotationAngle(Math.PI / 2.0);
+            plot.addAnnotation(annotation);
+        }
+        dataset.addSeries(timeSeries);
 
         XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) plot.getRenderer();
         renderer.setDefaultShapesVisible(true);
