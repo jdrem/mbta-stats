@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
@@ -43,7 +44,13 @@ public class TripReporter implements Runnable {
             String url = "https://api-v3.mbta.com/predictions?filter[trip]={TripID}";
             if (apiKey != null)
                 url += "&api_key=" + apiKey;
-            String r = restTemplate.getForObject(url, String.class, tripId);
+            String r;
+            try {
+                r = restTemplate.getForObject(url, String.class, tripId);
+            } catch (HttpClientErrorException hcee) {
+                log.warn("getting for trip {}: {}",tripId,hcee.getMessage());
+                continue;
+            }
             Map<String, Object> map = gson.fromJson(r, type);
             List<Map<String, Object>> data = (List<Map<String, Object>>) map.get("data");
             if (data == null || data.size() == 0)
