@@ -13,12 +13,18 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageOutputStream;
 import javax.sql.DataSource;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.text.SimpleDateFormat;
 import java.time.*;
 import java.util.HashMap;
@@ -29,23 +35,37 @@ import java.util.Map;
  * Created by jdr on 1/25/18.
  */
 public class ChartMaker {
-    public static void main(String args[]) throws IOException {
-        new ChartMaker().run("2018-01-25", 419);
-    }
 
-    public void run(String dateString, int tripId) throws IOException {
-        LocalDate localDate = LocalDate.parse(dateString);
-        String chartName = String.format("Trip %03d (%s)", tripId, dateString);
-        TimeSeriesCollection dataset = new TimeSeriesCollection();
-        String outFileName = String.format("trip-%s-%03d.png", dateString, tripId);
+    public static void main(String args[]) throws IOException {
+        ChartMaker chartMaker = new ChartMaker();
         String dbUrl = System.getProperty("db.url");
         String dbUser = System.getProperty("db.user");
         String dbPwd = System.getProperty("db.pwd");
         DataSource dataSource = new SingleConnectionDataSource(dbUrl, dbUser, dbPwd, false);
-        OnTimeDAOImpl fixture = new OnTimeDAOImpl(dataSource);
-        Map<String, Object> data = fixture.findDataForTrip(localDate, String.format("CR-Weekday-Fall-17-%03d", tripId));
-        List<Map<String, Object>> list = (List<Map<String, Object>>) data.get("stops");
+        OnTimeDataDAO onTimeDataDAO = new OnTimeDAOImpl(dataSource);
+        chartMaker.setOnTimeDataDAO(onTimeDataDAO);
+        LocalDate localDate = LocalDate.parse(args[0]);
+        int tripId = Integer.parseInt(args[1]);
+        byte[] chartAsBytes = chartMaker.createImageForDateAndTrip(localDate, tripId, 800, 600);
+        String outFileName = String.format("trip-%s-%03d.png", localDate, tripId);
+        Path path = FileSystems.getDefault().getPath(outFileName);
+        Files.write(path,chartAsBytes);
+    }
 
+    public ChartMaker() {
+    }
+
+    public ChartMaker(OnTimeDataDAO onTimeDataDAO) {
+        this.onTimeDataDAO = onTimeDataDAO;
+    }
+
+    private OnTimeDataDAO onTimeDataDAO;
+
+    public byte[] createImageForDateAndTrip(LocalDate localDate, int tripId, int width, int height) throws IOException {
+        String chartName = String.format("Trip %03d (%s)", tripId, localDate);
+        TimeSeriesCollection dataset = new TimeSeriesCollection();
+        Map<String, Object> data = onTimeDataDAO.findDataForTrip(localDate, tripId);
+        List<Map<String, Object>> list = (List<Map<String, Object>>) data.get("stops");
 
         JFreeChart chart = ChartFactory.createTimeSeriesChart(
                 chartName,                  // title
@@ -57,7 +77,6 @@ public class ChartMaker {
                 false                       // generate URLs?
         );
         XYPlot plot = (XYPlot) chart.getPlot();
-
 
         TimeSeries timeSeries = new TimeSeries("Delay");
         for (Map<String, Object> o : list) {
@@ -124,8 +143,14 @@ public class ChartMaker {
         axis.setDateFormatOverride(new SimpleDateFormat("HH:mm"));
         axis.setVerticalTickLabels(true);
 
-        BufferedImage image = chart.createBufferedImage(800, 600);
-        File imageFile = new File(outFileName);
-        ImageIO.write(image, "png", imageFile);
+        BufferedImage image = chart.createBufferedImage(width, height);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageIO.write(image, "png", outputStream);
+        outputStream.flush();
+        return outputStream.toByteArray();
+    }
+
+    public void setOnTimeDataDAO(OnTimeDataDAO onTimeDataDAO) {
+        this.onTimeDataDAO = onTimeDataDAO;
     }
 }
