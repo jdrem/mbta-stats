@@ -40,22 +40,23 @@ public class TripReporter implements Runnable {
 
     @Override
     public void run() {
-        for (String tripId : trips) {
+        for (String tripName : trips) {
             String url = "https://api-v3.mbta.com/predictions?filter[trip]={TripID}";
             if (apiKey != null)
                 url += "&api_key=" + apiKey;
             String r;
             try {
-                r = restTemplate.getForObject(url, String.class, tripId);
+                r = restTemplate.getForObject(url, String.class, tripName);
             } catch (HttpClientErrorException hcee) {
-                log.warn("getting for trip {}: {}",tripId,hcee.getMessage());
+                log.warn("getting for trip {}: {}",tripName,hcee.getMessage());
                 continue;
             }
+            int tripId = Integer.parseInt(tripName.substring(tripName.lastIndexOf("-")+1));
             Map<String, Object> map = gson.fromJson(r, type);
             List<Map<String, Object>> data = (List<Map<String, Object>>) map.get("data");
             if (data == null || data.size() == 0)
                 continue;
-            List<String[]> schedule = stopTimesDAO.getSchedule(tripId);
+            List<String[]> schedule = stopTimesDAO.getSchedule(tripName);
             Map<String, Object> prediction = data.get(0);
             Map<String, Object> attributes = (Map<String, Object>) prediction.get("attributes");
             int stopSequence = ((Number) attributes.get("stop_sequence")).intValue();
@@ -73,7 +74,8 @@ public class TripReporter implements Runnable {
             Duration delay = Duration.between(scheduledTime, predictedTime);
             ZonedDateTime now = ZonedDateTime.now(zoneId);
             Duration timeTilStop = Duration.between(now, predictedTime);
-            log.info("{} {} {} {} {} {} {} {}",
+            log.info("{} {} {} {} {} {} {} {} {}",
+                    tripName,
                     tripId,
                     sched[1],
                     stopSequence,
