@@ -29,6 +29,7 @@ public class RouteReader {
         urlConnection.connect();
         InputStream inputStream = (InputStream) urlConnection.getContent();
         ZipInputStream zipInputStream = new ZipInputStream(inputStream);
+        Pattern tripPtrn = Pattern.compile("\"?CR-(Sunday|Saturday|Weekday)-((?:Fall|Spring)-\\d\\d)-(\\d+)\"?");
 
         ZipEntry entry;
         while ((entry = zipInputStream.getNextEntry()) != null) {
@@ -36,7 +37,8 @@ public class RouteReader {
                     entry.getName(), entry.getSize(),
                     new Date(entry.getTime()));
             System.out.println(s);
-            if (!(entry.getName().equals("stops.txt")  || entry.getName().equals("trips.txt")))
+//            if (!(entry.getName().equals("stops.txt") || entry.getName().equals("trips.txt")))
+            if (!(entry.getName().equals("stop_times.txt")))
                 continue;
             ByteArrayOutputStream output = null;
             byte[] buffer = new byte[2048];
@@ -65,7 +67,6 @@ public class RouteReader {
                 }
 
             }
-            Pattern pattern = Pattern.compile("\"CR-(.+)-(\\d+)\"");
             if (entry.getName().equals("stop_times.txt")) {
                 Scanner scanner = new Scanner(s);
                 scanner.useDelimiter(",");
@@ -77,7 +78,13 @@ public class RouteReader {
                         scanner.nextLine();
                         continue;
                     }
-                    String tripId = s.substring(1, s.length() - 1);
+                    String tripName = s.substring(1, s.length() - 1);
+                    Matcher matcher = tripPtrn.matcher(tripName);
+                    if (!matcher.matches())
+                        continue;
+                    String scheduleType = matcher.group(1);
+                    String calendarName = matcher.group(2);
+                    int tripId = Integer.parseInt(matcher.group(3));
                     s = scanner.next();
                     String t[] = s.substring(1, s.length() - 1).split(":");
                     int h = Integer.parseInt(t[0]);
@@ -90,11 +97,11 @@ public class RouteReader {
                     LocalTime arrivalTime = LocalTime.of(h, m);
                     scanner.next();
                     s = scanner.next();
-                    String stopId = s.substring(1, s.length() - 1);
+                    String stopName = s.substring(1, s.length() - 1);
                     int stopSequence = scanner.nextInt();
-                    System.out.printf("%s %s %b %s %d%n", tripId, arrivalTime, nextDay, stopId, stopSequence);
+                    System.out.printf("%s %s %b %s %d%n", tripId, arrivalTime, nextDay, stopName, stopSequence);
                     try {
-                        stopTimesDAO.addStopToRoute(tripId, arrivalTime, nextDay, stopId, stopSequence);
+                        stopTimesDAO.addStopToRouteX(tripId, arrivalTime, nextDay, stopName, stopSequence);
                     } catch (DuplicateKeyException dke) {
 
                     }
@@ -108,20 +115,26 @@ public class RouteReader {
                     //"CR-Franklin","CR-Weekday-SouthSide-Fall-17-RegReduced","CR-Weekday-Fall-17-700","South Station","700",1,"","9880005",1,""
                     s = scanner.next();
                     System.out.println(s);
+
                     if (!s.startsWith("\"CR-")) {
                         scanner.nextLine();
                         continue;
                     }
-                    String routeId = s.substring(1, s.length() - 1);
+                    String routeName = s.substring(1, s.length() - 1);
                     scanner.next();
                     s = scanner.next();
-                    String tripId = s.substring(1, s.length() - 1);
+                    Matcher m = tripPtrn.matcher(s);
+                    if (!m.matches())
+                        continue;
+                    String scheduleType = m.group(1);
+                    String calendarName = m.group(2);
+                    int tripId = Integer.parseInt(m.group(3));
                     s = scanner.next();
                     String headSign = s.substring(1, s.length() - 1);
                     scanner.next();
                     s = scanner.next();
                     String dir = s;
-                    stopTimesDAO.addTrip(routeId, tripId, headSign, dir);
+                    stopTimesDAO.addTripX(routeName, scheduleType, calendarName, tripId, headSign, dir);
                     scanner.nextLine();
 
                 }
