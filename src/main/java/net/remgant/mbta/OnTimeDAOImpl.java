@@ -16,9 +16,11 @@ import java.util.*;
 public class OnTimeDAOImpl implements OnTimeDataDAO {
     JdbcTemplate jdbcTemplate;
 
+    @SuppressWarnings("UnusedDeclaration")
     public OnTimeDAOImpl() {
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public OnTimeDAOImpl(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -36,7 +38,7 @@ public class OnTimeDAOImpl implements OnTimeDataDAO {
     }
 
     @Override
-    public Map<String, Object> findDataForTrip(LocalDate date, int tripId) {
+    public Map<String, Object> findDataForTrip(LocalDate date, int tripId) throws NoDataForTripException {
         List<Map<String, Object>> list = new ArrayList<>();
         jdbcTemplate.query("select * from TripResults where tripDate = ? and tripId = ?",
                 new Object[]{Date.valueOf(date), tripId},
@@ -54,6 +56,8 @@ public class OnTimeDAOImpl implements OnTimeDataDAO {
                     }
                     list.add(map);
                 });
+        if (list.size() == 0)
+            throw new NoDataForTripException(String.format("No data for trip %d on %s",tripId,date));
         Map<String, Object> map = new HashMap<>();
         map.put("tripDate", date.toString());
         map.put("tripId", tripId);
@@ -61,6 +65,7 @@ public class OnTimeDAOImpl implements OnTimeDataDAO {
         return map;
     }
 
+    @SuppressWarnings("UnusedDeclaration")
     public void setJdbcTemplate(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }

@@ -9,23 +9,15 @@ import java.util.List;
  */
 public interface StopTimesDAO {
 
-    void addStopToRoute(String tripId, LocalTime arrivalTime, boolean nextDay, String stopId, int stopSequence);
-
-    List<String> findRoute(int routeId);
-
-    void addTrip(String routeId, String tripId, String headSign, String dir);
+    List<String> findStopsForTrip(int routeId);
 
     List<String> findAllRoutes();
 
-    List<String> findTripsForRoute(String routeId);
-
-    List<String[]>  getSchedule(String tripId);
-
-    public List<Object[]> getSchedule(int tripId);
+    public List<Stop> getSchedule(int tripId);
 
     List<Trip> findTripsForRoute(String routeName, LocalDate date);
 
-    void addTripX(String routeName, String scheduleType, String calendarName, int tripId, String headSign, String dir);
+    void addTrip(String routeName, String scheduleType, String calendarName, int tripId, String headSign, String dir);
 
-    void addStopToRouteX(int tripId, LocalTime arrivalTime, boolean nextDay, String stopName, int stopSequence);
+    void addStopToRoute(int tripId, LocalTime arrivalTime, boolean nextDay, String stopName, int stopSequence);
 }

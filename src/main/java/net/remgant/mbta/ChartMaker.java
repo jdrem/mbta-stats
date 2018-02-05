@@ -13,15 +13,12 @@ import org.jfree.data.time.TimeSeriesCollection;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 import javax.imageio.ImageIO;
-import javax.imageio.stream.ImageOutputStream;
 import javax.sql.DataSource;
 import java.awt.*;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,6 +62,7 @@ public class ChartMaker {
         String chartName = String.format("Trip %03d (%s)", tripId, localDate);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
         Map<String, Object> data = onTimeDataDAO.findDataForTrip(localDate, tripId);
+        @SuppressWarnings("unchecked")
         List<Map<String, Object>> list = (List<Map<String, Object>>) data.get("stops");
 
         JFreeChart chart = ChartFactory.createTimeSeriesChart(

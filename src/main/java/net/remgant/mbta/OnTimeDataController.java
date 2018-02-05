@@ -1,8 +1,10 @@
 package net.remgant.mbta;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.LocalDate;
 import java.util.Map;
 
@@ -38,8 +40,12 @@ public class OnTimeDataController {
         try {
             return chartMaker.createImageForDateAndTrip(LocalDate.of(year, month, day), tripId, 800, 600);
         } catch (IOException e) {
-            //TODO return custom error page instead?
-            throw new RuntimeException(e);
+            throw new UncheckedIOException(e);
         }
+    }
+
+    @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "Data Not Found")
+    @ExceptionHandler(NoDataForTripException.class)
+    public void noDataForTrip() {
     }
 }

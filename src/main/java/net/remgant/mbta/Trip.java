@@ -3,6 +3,7 @@ package net.remgant.mbta;
 /**
  * Created by jdr on 2/4/18.
  */
+@SuppressWarnings("UnusedDeclaration")
 public class Trip {
     int id;
     String calendar;

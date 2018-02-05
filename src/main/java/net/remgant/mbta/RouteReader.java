@@ -101,7 +101,7 @@ public class RouteReader {
                     int stopSequence = scanner.nextInt();
                     System.out.printf("%s %s %b %s %d%n", tripId, arrivalTime, nextDay, stopName, stopSequence);
                     try {
-                        stopTimesDAO.addStopToRouteX(tripId, arrivalTime, nextDay, stopName, stopSequence);
+                        stopTimesDAO.addStopToRoute(tripId, arrivalTime, nextDay, stopName, stopSequence);
                     } catch (DuplicateKeyException dke) {
 
                     }
@@ -134,7 +134,7 @@ public class RouteReader {
                     scanner.next();
                     s = scanner.next();
                     String dir = s;
-                    stopTimesDAO.addTripX(routeName, scheduleType, calendarName, tripId, headSign, dir);
+                    stopTimesDAO.addTrip(routeName, scheduleType, calendarName, tripId, headSign, dir);
                     scanner.nextLine();
 
                 }
@@ -155,7 +155,6 @@ public class RouteReader {
         DataSource dataSource = new SingleConnectionDataSource(dbUrl, dbUser, dbPwd, false);
         StopTimesDAOImpl dao = new StopTimesDAOImpl();
         dao.setJdbcTemplate(new JdbcTemplate(dataSource));
-        dao.init();
         RouteReader routeReader = new RouteReader();
         routeReader.setStopTimesDAO(dao);
         routeReader.updateRoutes();
