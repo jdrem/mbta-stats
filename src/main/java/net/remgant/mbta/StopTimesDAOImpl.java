@@ -1,11 +1,15 @@
 package net.remgant.mbta;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 
 import javax.sql.DataSource;
 import java.sql.Date;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -18,6 +22,7 @@ import java.util.Map;
  * Created by jdr on 1/14/18.
  */
 public class StopTimesDAOImpl implements StopTimesDAO {
+    Logger log = LoggerFactory.getLogger(StopTimesDAOImpl.class);
     private JdbcTemplate jdbcTemplate;
 
     public StopTimesDAOImpl() {
@@ -48,7 +53,7 @@ public class StopTimesDAOImpl implements StopTimesDAO {
     public List<String> findStopsForTrip(int tripId) {
         List<String> list = new ArrayList<>();
         jdbcTemplate.query("select stopId from Stops where tripId = ? order by stopSequence",
-                (ResultSet resultSet) -> list.add(resultSet.getString(1)),
+                (RowCallbackHandler) resultSet -> list.add(resultSet.getString(1)),
                 tripId);
         return list;
     }
@@ -57,7 +62,7 @@ public class StopTimesDAOImpl implements StopTimesDAO {
     public List<Stop> getSchedule(int tripId) {
         List<Stop> list = new ArrayList<>();
         jdbcTemplate.query("select stopName, arrivalTime, nextDay, stopSequence from Stops where tripId = ? order by stopSequence;",
-                (ResultSet resultSet) -> list.add(new Stop(resultSet.getString(1),
+                (RowCallbackHandler) resultSet -> list.add(new Stop(resultSet.getString(1),
                         resultSet.getTime(2).toLocalTime(),
                         resultSet.getBoolean(3),
                         resultSet.getInt(4))),
@@ -95,11 +100,11 @@ public class StopTimesDAOImpl implements StopTimesDAO {
         }
         final String calendarName = map.get("calendarName").toString();
         final String calendarType = map.get("calendarType").toString();
-        System.out.printf("%s %s %s%n", date, calendarName, calendarType);
         List<Trip> list = new ArrayList<>();
+        log.debug("Getting schedule for {} and {}",routeName,calendarType);
         jdbcTemplate.query("select  tripId from Trips t, Routes r where t.routeId = r.routeId and r.routeName = ? " +
                         "and scheduleType = ?",
-                (ResultSet resultSet) -> list.add(new Trip(routeName, resultSet.getInt(1), calendarType, calendarName)),
+                (RowCallbackHandler) resultSet -> list.add(new Trip(routeName, resultSet.getInt(1), calendarType, calendarName)),
                 routeName, calendarType);
         return list;
     }
