@@ -13,8 +13,10 @@ import java.lang.reflect.Type;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
@@ -22,19 +24,20 @@ import java.util.concurrent.CopyOnWriteArrayList;
  */
 @SuppressWarnings("unchecked")
 public class TripReporter {
-    Logger log = LoggerFactory.getLogger(TripReporter.class);
-    private StopTimesDAO stopTimesDAO;
-    private OnTimeDataDAO onTimeDataDAO;
+    private final static Logger log = LoggerFactory.getLogger(TripReporter.class);
+    private final static ZoneId zoneId = ZoneId.of("America/New_York");
+    protected Clock clock = Clock.system(zoneId);
+    protected StopTimesDAO stopTimesDAO;
+    protected OnTimeDataDAO onTimeDataDAO;
     private String routeNames;
     private String apiKey;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    protected RestTemplate restTemplate = new RestTemplate();
     private final Gson gson = new Gson();
     private final static Type type = new TypeToken<Map<String, Object>>() {
     }.getType();
-    private final static ZoneId zoneId = ZoneId.of("America/New_York");
 
-    private final List<Trip> trips = new CopyOnWriteArrayList<>();
+    protected List<Trip> trips = new CopyOnWriteArrayList<>();
 
     @PostConstruct
     public void init() {
@@ -45,7 +48,7 @@ public class TripReporter {
     public void refresh() {
         trips.clear();
         for (String route : routeNames.split(","))
-            trips.addAll(stopTimesDAO.findTripsForRoute(route, LocalDate.now()));
+            trips.addAll(stopTimesDAO.findTripsForRoute(route, LocalDate.now(clock)));
     }
 
     @Scheduled(cron = "0 */1 4-23 * * *")
@@ -67,34 +70,46 @@ public class TripReporter {
             if (data == null || data.size() == 0)
                 continue;
             List<Stop> schedule = stopTimesDAO.getSchedule(tripId);
-            Map<String, Object> prediction = data.get(0);
-            Map<String, Object> attributes = (Map<String, Object>) prediction.get("attributes");
+            log.info("data = {}", data);
+            Optional<Map<String, Object>> attrOpt = data.stream().filter(m -> m.containsKey("attributes"))
+                    .map(m -> (Map<String, Object>) m.get("attributes"))
+                    .filter(m -> !(m.containsKey("status") && m.get("status") != null && m.get("status").equals("Departed")))
+                    .sorted((a, b) -> ((Number) a.get("stop_sequence")).intValue() - ((Number) b.get("stop_sequence")).intValue())
+                    .findFirst();
+            if (!attrOpt.isPresent()) {
+                log.warn("no attributes for {}", trip);
+                continue;
+            }
+            Map<String, Object> attributes = attrOpt.get();
             int stopSequence = ((Number) attributes.get("stop_sequence")).intValue();
             String predictedTimeStr;
-            if (stopSequence == 1)
-                predictedTimeStr = (String) attributes.get("departure_time");
-            else
+            log.info("trip: {}, attributes: {}", trip, attributes);
+            if (attributes.containsKey("arrival_time") && attributes.get("arrival_time") != null)
                 predictedTimeStr = (String) attributes.get("arrival_time");
+            else
+                predictedTimeStr = (String) attributes.get("departure_time");
+            if (predictedTimeStr == null)
+                throw new RuntimeException("can't find predicted time");
             LocalDateTime localDateTime = LocalDateTime.parse(predictedTimeStr, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
             ZonedDateTime predictedTime = ZonedDateTime.of(localDateTime, zoneId);
             Stop stop = schedule.get(stopSequence - 1);
             LocalTime localTime = stop.getArrivalTime();
-            ZonedDateTime scheduledTime = ZonedDateTime.of(LocalDate.now(), localTime, zoneId);
+            ZonedDateTime scheduledTime = ZonedDateTime.of(LocalDate.now(clock), localTime, zoneId);
             Duration delay = Duration.between(scheduledTime, predictedTime);
-            ZonedDateTime now = ZonedDateTime.now(zoneId);
+            ZonedDateTime now = ZonedDateTime.now(clock);
             Duration timeTilStop = Duration.between(now, predictedTime);
-            log.info("{} {} {} {} {} {} {} {} {}",
-                    trip.toString(),
-                    tripId,
-                    stop.getName(),
-                    stopSequence,
-                    DateTimeFormatter.ISO_LOCAL_TIME.format(now),
-                    DateTimeFormatter.ISO_LOCAL_TIME.format(scheduledTime),
-                    DateTimeFormatter.ISO_LOCAL_TIME.format(predictedTime),
-                    String.format("%d:%02d", delay.get(ChronoUnit.SECONDS) / 60, Math.abs(delay.get(ChronoUnit.SECONDS) % 60)),
-                    String.format("%d:%02d", timeTilStop.get(ChronoUnit.SECONDS) / 60, Math.abs(timeTilStop.get(ChronoUnit.SECONDS) % 60))
-            );
-            onTimeDataDAO.addRecord(LocalDate.now(), Instant.now(), tripId, stop.getName(), stopSequence,
+            if (log.isDebugEnabled())
+                log.debug("{} {} {} {} {} {} {} {}",
+                        trip.toString(),
+                        stop.getName(),
+                        stopSequence,
+                        DateTimeFormatter.ISO_LOCAL_TIME.format(now),
+                        DateTimeFormatter.ISO_LOCAL_TIME.format(scheduledTime),
+                        DateTimeFormatter.ISO_LOCAL_TIME.format(predictedTime),
+                        String.format("%d:%02d", delay.get(ChronoUnit.SECONDS) / 60, Math.abs(delay.get(ChronoUnit.SECONDS) % 60)),
+                        String.format("%d:%02d", timeTilStop.get(ChronoUnit.SECONDS) / 60, Math.abs(timeTilStop.get(ChronoUnit.SECONDS) % 60))
+                );
+            onTimeDataDAO.addRecord(LocalDate.now(clock), Instant.now(clock), tripId, stop.getName(), stopSequence,
                     scheduledTime.toLocalTime(), predictedTime.toLocalTime(),
                     delay.get(ChronoUnit.SECONDS), timeTilStop.get(ChronoUnit.SECONDS));
             try {
