@@ -19,6 +19,7 @@ import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -58,7 +59,7 @@ public class ChartMaker {
 
     private OnTimeDataDAO onTimeDataDAO;
 
-    public byte[] createImageForDateAndTrip(LocalDate localDate, int tripId, int width, int height) throws IOException {
+    public byte[] createImageForDateAndTrip(LocalDate localDate, int tripId, int width, int height) {
         String chartName = String.format("Trip %03d (%s)", tripId, localDate);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
         Map<String, Object> data = onTimeDataDAO.findDataForTrip(localDate, tripId);
@@ -143,8 +144,12 @@ public class ChartMaker {
 
         BufferedImage image = chart.createBufferedImage(width, height);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        ImageIO.write(image, "png", outputStream);
-        outputStream.flush();
+        try {
+            ImageIO.write(image, "png", outputStream);
+            outputStream.flush();
+        } catch (IOException ioe) {
+            throw new UncheckedIOException(ioe);
+        }
         return outputStream.toByteArray();
     }
 

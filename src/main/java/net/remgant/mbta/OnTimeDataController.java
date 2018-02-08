@@ -37,11 +37,7 @@ public class OnTimeDataController {
                                       @PathVariable("month") int month,
                                       @PathVariable("day") int day,
                                       @PathVariable("tripId") int tripId) {
-        try {
-            return chartMaker.createImageForDateAndTrip(LocalDate.of(year, month, day), tripId, 800, 600);
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
+        return chartMaker.createImageForDateAndTrip(LocalDate.of(year, month, day), tripId, 800, 600);
     }
 
     @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "Data Not Found")
