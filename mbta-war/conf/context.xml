@@ -1,0 +1,8 @@
+<Context>
+
+    <Resource name="jdbc/MBTADB" auth="Container" type="javax.sql.DataSource"
+                  maxActive="100" maxIdle="30" maxWait="10000"
+                  username="${db.user}" password="${db.pwd}" driverClassName="com.mysql.jdbc.Driver"
+                  url="${db.url}"/>
+
+</Context>

@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
@@ -13,7 +12,6 @@ import java.lang.reflect.Type;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,14 +42,12 @@ public class TripReporter {
         refresh();
     }
 
-    @Scheduled(cron = "0 0 3 * * *")
     public void refresh() {
         trips.clear();
         for (String route : routeNames.split(","))
             trips.addAll(stopTimesDAO.findTripsForRoute(route, LocalDate.now(clock)));
     }
 
-    @Scheduled(cron = "0 */1 4-23 * * *")
     public void processTripData() {
         for (Trip trip : trips) {
             String url = "https://api-v3.mbta.com/predictions?filter[trip]={TripID}";

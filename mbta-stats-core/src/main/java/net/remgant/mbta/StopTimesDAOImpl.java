@@ -9,7 +9,6 @@ import org.springframework.jdbc.core.RowCallbackHandler;
 import javax.sql.DataSource;
 import java.sql.Date;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;

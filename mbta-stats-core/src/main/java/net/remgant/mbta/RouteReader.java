@@ -5,7 +5,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
 import javax.sql.DataSource;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 import java.time.LocalTime;
@@ -21,7 +23,7 @@ import java.util.zip.ZipInputStream;
  */
 public class RouteReader {
 
-    String dataUrl = "https://www.mbta.com/uploadedfiles/MBTA_GTFS.zip";
+    String dataUrl = "https://www.net.remgant.mbta.com/uploadedfiles/MBTA_GTFS.zip";
 
     public void updateRoutes() throws IOException {
         URL url = new URL(dataUrl);
@@ -45,7 +47,7 @@ public class RouteReader {
 
             try {
                 output = new ByteArrayOutputStream();
-                int len = 0;
+                int len;
                 while ((len = zipInputStream.read(buffer)) > 0) {
                     output.write(buffer, 0, len);
                 }
@@ -82,8 +84,6 @@ public class RouteReader {
                     Matcher matcher = tripPtrn.matcher(tripName);
                     if (!matcher.matches())
                         continue;
-                    String scheduleType = matcher.group(1);
-                    String calendarName = matcher.group(2);
                     int tripId = Integer.parseInt(matcher.group(3));
                     s = scanner.next();
                     String t[] = s.substring(1, s.length() - 1).split(":");
@@ -102,7 +102,7 @@ public class RouteReader {
                     System.out.printf("%s %s %b %s %d%n", tripId, arrivalTime, nextDay, stopName, stopSequence);
                     try {
                         stopTimesDAO.addStopToRoute(tripId, arrivalTime, nextDay, stopName, stopSequence);
-                    } catch (DuplicateKeyException dke) {
+                    } catch (DuplicateKeyException ignore) {
 
                     }
                     scanner.nextLine();
