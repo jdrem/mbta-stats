@@ -18,6 +18,7 @@
         <spring.framework.boot.version>1.5.10.RELEASE</spring.framework.boot.version>
         <slf4j.version>1.7.16</slf4j.version>
         <logback.version>1.2.3</logback.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <distributionManagement>
@@ -151,6 +152,32 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>rpm-maven-plugin</artifactId>
+                <configuration>
+                    <group>Applications/Internet</group>
+                    <release>1</release>
+                    <mappings>
+                        <mapping>
+                            <directoryIncluded>false</directoryIncluded>
+                            <directory>/usr/share/tomcat</directory>
+                            <sources>
+                                <source>
+                                    <location>${project.basedir}/mbta-war/target/mbta-war-${version}.war</location>
+                                </source>
+                                <source>
+                                    <location>${project.basedir}/mbta-war/conf/context.xml</location>
+                                </source>
+                            </sources>
+                        </mapping>
+                    </mappings>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
 </project>
