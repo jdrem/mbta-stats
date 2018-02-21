@@ -59,10 +59,10 @@ public class ChartMaker {
 
     private OnTimeDataDAO onTimeDataDAO;
 
-    public byte[] createImageForDateAndTrip(LocalDate localDate, int tripId, int width, int height) {
-        String chartName = String.format("Trip %03d (%s)", tripId, localDate);
+    public byte[] createImageForDateAndTrip(LocalDate tripDate, int tripId, int width, int height) {
+        String chartName = String.format("Trip %03d (%s)", tripId, tripDate);
         TimeSeriesCollection dataset = new TimeSeriesCollection();
-        Map<String, Object> data = onTimeDataDAO.findDataForTrip(localDate, tripId);
+        Map<String, Object> data = onTimeDataDAO.findDataForTrip(tripDate, tripId);
         @SuppressWarnings("unchecked")
         List<Map<String, Object>> list = (List<Map<String, Object>>) data.get("stops");
 
@@ -81,15 +81,18 @@ public class ChartMaker {
         for (Map<String, Object> o : list) {
             Instant i = Instant.parse(o.get("timestamp").toString());
             ZonedDateTime zdt = i.atZone(ZoneId.of("America/New_York"));
+            ZonedDateTime scheduledTime = ZonedDateTime.of(tripDate,LocalTime.parse(o.get("scheduledTime").toString()),ZoneId.of("America/New_York"));
+            if (zdt.compareTo(scheduledTime) < 0)
+                continue;
             Minute minute = new Minute(zdt.getMinute(), zdt.getHour(), zdt.getDayOfMonth(), zdt.getMonthValue(), zdt.getYear());
-            int delay = Integer.parseInt(o.get("delay").toString());
+            int delay = new Double(o.get("delay").toString()).intValue();
             timeSeries.add(minute, delay);
         }
         dataset.addSeries(timeSeries);
 
         Map<LocalTime, String> stopTimes = new HashMap<>();
 
-        list.stream().forEach(m -> {
+        list.forEach(m -> {
             LocalTime t = LocalTime.parse(m.get("scheduledTime").toString());
             if (!stopTimes.containsKey(t))
                 stopTimes.put(t, m.get("nextStop").toString());
@@ -97,7 +100,7 @@ public class ChartMaker {
 
         timeSeries = new TimeSeries("Stops");
         for (Map.Entry<LocalTime, String> e : stopTimes.entrySet()) {
-            ZonedDateTime zdt = ZonedDateTime.of(localDate, e.getKey(), ZoneId.of("America/New_York"));
+            ZonedDateTime zdt = ZonedDateTime.of(tripDate, e.getKey(), ZoneId.of("America/New_York"));
             Minute minute = new Minute(zdt.getMinute(), zdt.getHour(), zdt.getDayOfMonth(), zdt.getMonthValue(), zdt.getYear());
             timeSeries.add(minute, -5);
             XYTextAnnotation annotation = new XYTextAnnotation(e.getValue(), minute.getFirstMillisecond(), -5);
@@ -112,7 +115,7 @@ public class ChartMaker {
         dataset.addSeries(timeSeries);
 
         Map<String, ZonedDateTime> actualStops = new HashMap<>();
-        list.stream().forEach(m -> {
+        list.forEach(m -> {
             String stop = m.get("nextStop").toString();
             ZonedDateTime zdt = Instant.parse(m.get("timestamp").toString()).atZone(ZoneId.of("America/New_York"));
             actualStops.put(stop, zdt);
