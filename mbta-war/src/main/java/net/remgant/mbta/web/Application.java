@@ -1,10 +1,12 @@
 package net.remgant.mbta.web;
 
 import net.remgant.mbta.*;
+import org.apache.catalina.filters.CorsFilter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
@@ -18,6 +20,9 @@ import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 import javax.sql.DataSource;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Created by jdr on 2/12/18.
@@ -81,14 +86,23 @@ public class Application extends SpringBootServletInitializer {
         return tripReporter;
     }
 
+    @Value("${enable.trip.reporter:true}")
+    private boolean enableTripReporter;
+
     @Bean
     public TripReporterWrapper tripReporterWrapper() {
-        return new TripReporterWrapper(tripReporter());
+        if (enableTripReporter)
+            return new TripReporterWrapper(tripReporter());
+        else
+            return new TripReporterWrapper();
     }
 
 
     public static class TripReporterWrapper {
         TripReporter tripReporter;
+
+        public TripReporterWrapper() {
+        }
 
         TripReporterWrapper(TripReporter tripReporter) {
             this.tripReporter = tripReporter;
@@ -96,13 +110,24 @@ public class Application extends SpringBootServletInitializer {
 
         @Scheduled(cron = "0 0 3 * * *")
         public void refresh() {
-            tripReporter.refresh();
+            if (tripReporter != null)
+                tripReporter.refresh();
         }
 
         @Scheduled(cron = "0 */1 4-23 * * *")
         public void processTripData() {
-            tripReporter.processTripData();
+            if (tripReporter != null)
+                tripReporter.processTripData();
         }
+    }
+
+    @Bean
+    public FilterRegistrationBean filterRegistrationBean() {
+        FilterRegistrationBean registration = new FilterRegistrationBean();
+        CorsFilter corsFilter = new CorsFilter();
+        registration.setFilter(corsFilter);
+        registration.setUrlPatterns(Collections.singleton("/*"));
+        return registration;
     }
 
     @Bean
