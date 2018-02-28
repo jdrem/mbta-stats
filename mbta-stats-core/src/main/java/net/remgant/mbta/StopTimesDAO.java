@@ -3,6 +3,7 @@ package net.remgant.mbta;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Created by jdr on 1/14/18.
@@ -13,7 +14,9 @@ public interface StopTimesDAO {
 
     List<String> findAllRoutes();
 
-    public List<Stop> getSchedule(int tripId);
+    List<String> findRoutesForDay(LocalDate date);
+
+    List<Stop> getSchedule(int tripId);
 
     List<Trip> findTripsForRoute(String routeName, LocalDate date);
 

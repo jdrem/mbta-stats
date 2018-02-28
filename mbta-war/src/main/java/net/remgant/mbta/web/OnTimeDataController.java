@@ -1,12 +1,13 @@
 package net.remgant.mbta.web;
 
-import net.remgant.mbta.ChartMaker;
-import net.remgant.mbta.NoDataForTripException;
-import net.remgant.mbta.OnTimeDataDAO;
+import net.remgant.mbta.*;
+import org.apache.tomcat.jni.Local;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,11 +16,13 @@ import java.util.Map;
 @RestController
 public class OnTimeDataController {
 
+    private StopTimesDAO stopTimesDAO;
     private OnTimeDataDAO onTimeDataDAO;
     private ChartMaker chartMaker;
 
-    public OnTimeDataController(OnTimeDataDAO onTimeDataDAO) {
+    public OnTimeDataController(OnTimeDataDAO onTimeDataDAO, StopTimesDAO stopTimesDAO) {
         this.onTimeDataDAO = onTimeDataDAO;
+        this.stopTimesDAO = stopTimesDAO;
         this.chartMaker = new ChartMaker(onTimeDataDAO);
     }
 
@@ -39,6 +42,12 @@ public class OnTimeDataController {
                                       @PathVariable("day") int day,
                                       @PathVariable("tripId") int tripId) {
         return chartMaker.createImageForDateAndTrip(LocalDate.of(year, month, day), tripId, 800, 600);
+    }
+
+    @RequestMapping(value = "/current_trip_data", method = RequestMethod.GET)
+    @ResponseBody
+    public List<Map<String, Object>> findCurrentData() {
+        return onTimeDataDAO.findCurrentStopData();
     }
 
     @ResponseStatus(value = HttpStatus.NOT_FOUND, reason = "Data Not Found")

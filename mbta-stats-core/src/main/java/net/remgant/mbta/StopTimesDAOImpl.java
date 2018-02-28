@@ -8,7 +8,6 @@ import org.springframework.jdbc.core.RowCallbackHandler;
 
 import javax.sql.DataSource;
 import java.sql.Date;
-import java.sql.ResultSet;
 import java.sql.Time;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -72,9 +71,16 @@ public class StopTimesDAOImpl implements StopTimesDAO {
     @Override
     public List<String> findAllRoutes() {
         List<String> list = new ArrayList<>();
-        jdbcTemplate.query("select routeName from Routes", (ResultSet resultSet) -> list.add(resultSet.getString(1)));
-        return list;
+        return jdbcTemplate.queryForList("select routeName from Routes", String.class);
     }
+
+    @Override
+    public List<String> findRoutesForDay(LocalDate date) {
+        return jdbcTemplate.queryForList("select routeName from Routes where exists (select TripResults.tripId " +
+                "from Trips, TripResults WHERE  Routes.routeId = Trips.routeId and Trips.tripId = TripResults.tripId " +
+                "and tripDate = ?)", String.class, date);
+    }
+
 
     @Override
     public List<Trip> findTripsForRoute(String routeName, LocalDate date) {
@@ -100,7 +106,7 @@ public class StopTimesDAOImpl implements StopTimesDAO {
         final String calendarName = map.get("calendarName").toString();
         final String calendarType = map.get("calendarType").toString();
         List<Trip> list = new ArrayList<>();
-        log.debug("Getting schedule for {} and {}",routeName,calendarType);
+        log.debug("Getting schedule for {} and {}", routeName, calendarType);
         jdbcTemplate.query("select  tripId from Trips t, Routes r where t.routeId = r.routeId and r.routeName = ? " +
                         "and scheduleType = ?",
                 (RowCallbackHandler) resultSet -> list.add(new Trip(routeName, resultSet.getInt(1), calendarType, calendarName)),

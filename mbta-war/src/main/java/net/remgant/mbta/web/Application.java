@@ -57,7 +57,7 @@ public class Application extends SpringBootServletInitializer {
 
     @Bean
     public OnTimeDataController onTimeDataController() {
-        return new OnTimeDataController(onTimeDataDao());
+        return new OnTimeDataController(onTimeDataDao(),stopTimesDAO());
     }
 
     @Bean

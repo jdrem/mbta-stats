@@ -3,6 +3,7 @@ package net.remgant.mbta;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -13,4 +14,7 @@ public interface OnTimeDataDAO {
                    LocalTime predictedTime, long delay, long timeTilStop);
 
     Map<String, Object> findDataForTrip(LocalDate date, int tripId) throws NoDataForTripException;
+
+    List<Map<String,Object>> findCurrentStopData();
+    
 }

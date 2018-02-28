@@ -83,6 +83,11 @@ public class TripReporterTest {
                     @Override
                     public void addStopToRoute(int tripId, LocalTime arrivalTime, boolean nextDay, String stopName, int stopSequence) {
                     }
+
+                    @Override
+                    public List<String> findRoutesForDay(LocalDate date) {
+                        return null;
+                    }
                 };
                 this.onTimeDataDAO = new OnTimeDataDAO() {
                     @Override
@@ -92,6 +97,11 @@ public class TripReporterTest {
 
                     @Override
                     public Map<String, Object> findDataForTrip(LocalDate date, int tripId) throws NoDataForTripException {
+                        return null;
+                    }
+
+                    @Override
+                    public List<Map<String, Object>> findCurrentStopData() {
                         return null;
                     }
                 };
