@@ -9,9 +9,12 @@ import org.springframework.jdbc.core.ResultSetExtractor;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.sql.Date;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -99,9 +102,18 @@ public class OnTimeDAOImpl implements OnTimeDataDAO {
             return list;
         });
         log.debug(returnList.toString());
+        LocalTime now = LocalTime.now();
         Map<Integer, List<Map<String, Object>>> l =
-                returnList.stream().collect(Collectors.groupingBy( m -> (int)m.get("tripId")));
-        return  l.values().stream().map(v -> v.get(0)).collect(Collectors.toList());
+                returnList.stream().collect(Collectors.groupingBy(m -> (int) m.get("tripId")));
+        return l.values().stream()
+                .map(v -> v.get(0))
+                .filter(m -> {
+                    LocalTime lt = LocalTime.parse(m.get("predictedTime").toString());
+                    long delay = Long.parseLong(m.get("delay").toString());
+                    lt = lt.minus(delay, ChronoUnit.SECONDS);
+                    return Duration.between(lt, now).get(ChronoUnit.SECONDS) < 300;
+                })
+                .collect(Collectors.toList());
     }
 
     @SuppressWarnings("UnusedDeclaration")
