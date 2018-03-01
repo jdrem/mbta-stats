@@ -9,12 +9,8 @@ import org.springframework.jdbc.core.ResultSetExtractor;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.sql.Date;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.*;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -23,18 +19,22 @@ import java.util.stream.Collectors;
  */
 public class OnTimeDAOImpl implements OnTimeDataDAO {
     final private static Logger log = LoggerFactory.getLogger(OnTimeDAOImpl.class);
-    JdbcTemplate jdbcTemplate;
+    protected JdbcTemplate jdbcTemplate;
+    protected Clock clock;
 
     @SuppressWarnings("UnusedDeclaration")
     public OnTimeDAOImpl() {
+        clock = Clock.system(ZoneId.of("America/New_York"));
     }
 
     @SuppressWarnings("UnusedDeclaration")
     public OnTimeDAOImpl(JdbcTemplate jdbcTemplate) {
+        this();
         this.jdbcTemplate = jdbcTemplate;
     }
 
     public OnTimeDAOImpl(DataSource dataSource) {
+        this();
         this.jdbcTemplate = new JdbcTemplate(dataSource);
     }
 
@@ -102,7 +102,7 @@ public class OnTimeDAOImpl implements OnTimeDataDAO {
             return list;
         });
         log.debug(returnList.toString());
-        LocalTime now = LocalTime.now();
+        LocalTime now = LocalTime.now(clock);
         Map<Integer, List<Map<String, Object>>> l =
                 returnList.stream().collect(Collectors.groupingBy(m -> (int) m.get("tripId")));
         return l.values().stream()
